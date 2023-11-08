@@ -56,6 +56,15 @@ enum {
     duplicate_current_user_7
 };
 
+enum Modify_user_info {
+    MODIFY_ID,
+    MODIFY_PASSWORD,
+    MODIFY_NICKNAME,
+    MODIFY_EMAIL,
+    MODIFY_BACK,
+    MEMBER_INFORMATION,
+};
+
 void server_init();
 void add_client();
 void recv_msg(int idx);
@@ -65,6 +74,12 @@ void current_user(string current_id);
 bool duplicate_current_user(string duplicate_current_id);
 void del_client(int idx);
 void join_membership(char* buf, int idx);
+void modify_user_info(string, int);
+string my_info(string, string);
+bool password_check(string a);
+bool email_check(string email);
+void delete_current_user(string);
+
 
 int main() {
     WSADATA wsa;
@@ -94,7 +109,7 @@ int main() {
             // 인원 수 만큼 thread 생성해서 각각의 클라이언트가 동시에 소통할 수 있도록 함.
             th1[i] = std::thread(add_client); //new 안쓰고 overload 객체 생성?
         }
-        
+
         for (int i = 0; i < MAX_CLIENT; i++) {
             th1[i].join();
             //join : 해당하는 thread 들이 실행을 종료하면 리턴하는 함수.
@@ -162,16 +177,21 @@ void recv_msg(int idx) {
 
         }
         else { //그렇지 않을 경우 퇴장에 대한 신호로 생각하여 퇴장 메시지 전송
-            
+            delete_current_user(sck_list[idx].user_id);
             del_client(idx); // 클라이언트 삭제
             return;
         }
     }
 }
+void delete_current_user(string delete_id) { //로그아웃 시 해당 유저를 테이블에서 삭제
+    pstmt = con->prepareStatement("DELETE FROM connecting_user where user_id = ?");
+    pstmt->setString(1, delete_id);
+    pstmt->execute();
+}
 
 void get_order(char* buf, int idx) {       //클라이언트의 명령어와 소켓리스트의 idx를 매개변수로 가진다.
     int order = buf[0] - '0';
-    
+
     string msg = (string)buf;
     string sub = "";
     switch (order) {
@@ -182,10 +202,74 @@ void get_order(char* buf, int idx) {       //클라이언트의 명령어와 소켓리스트의 
     case join_membership_1:
         join_membership(buf, idx);
         break;
+    case modify_user_info_2:
+        modify_user_info(msg.substr(2), idx);
 
     }
-    
+
 }
+
+void modify_user_info(string msg, int idx) {
+    string new_info = msg.substr(2);
+    int what_modify = msg[0] - '0';
+    string user_id = sck_list[idx].user_id;
+    string user_pw = sck_list[idx].user_pw;
+
+    msg = "성공적으로 정보가 수정되었습니다.";
+    switch (what_modify) {
+    case MODIFY_PASSWORD:
+        if (password_check(new_info)) {
+            pstmt = con->prepareStatement("UPDATE user set password = ? where user_id = ?");
+            pstmt->setString(1, new_info);
+            pstmt->setString(2, user_id);
+            pstmt->execute();
+            sck_list[idx].user_pw = new_info;
+        }
+        else {
+            msg = "false";
+        }
+        break;
+    case MODIFY_NICKNAME:
+        pstmt = con->prepareStatement("UPDATE user set nickname = ? where user_id = ?");
+        pstmt->setString(1, new_info);
+        pstmt->setString(2, user_id);
+        pstmt->execute();
+        sck_list[idx].user_nick = new_info;
+        break;
+    case MODIFY_EMAIL:
+        if (email_check(new_info)) {
+            pstmt = con->prepareStatement("UPDATE user set email = ? where user_id = ?");
+            pstmt->setString(1, new_info);
+            pstmt->setString(2, user_id);
+            pstmt->execute();
+        }
+        else {
+            msg = "false";
+        }
+        break;
+    case MEMBER_INFORMATION:
+        msg = my_info(user_id, user_pw);
+        break;
+    }
+
+    send(sck_list[idx].sck, msg.c_str(), msg.size(), 0);
+
+}
+
+string my_info(string id, string pwd) {
+    pstmt = con->prepareStatement("SELECT * FROM user where user_id = ? and password = ?");
+    pstmt->setString(1, id);
+    pstmt->setString(2, pwd);
+    pstmt->execute();
+    result = pstmt->executeQuery();
+    string msg = "";
+
+    if (result->next()) {
+        msg = "내정보-------------------------\nID:" + result->getString(1) + "\nPW:" + result->getString(2) + "\n닉네임:" + result->getString(3) + "\nemail:" + result->getString(4) + "\n------------------------------";
+    }
+    return msg;
+}
+
 
 bool password_check(string a) {
     char special_char[3] = { '!', '?', '#' }; //!, ?, # 중 하나를 반드시 포함하여 비밀번호 구성
@@ -214,7 +298,7 @@ bool email_check(string email) { //이메일 규칙 검사
 }
 
 void join_membership(char* buf, int idx) {
-   
+
     string use_id, use_password, use_nick, use_email;
     string db_id, correct_password;
     membership member;
@@ -226,30 +310,30 @@ void join_membership(char* buf, int idx) {
     use_id = use_id.substr(2);
 
     string msg = "";
-   
-    
-        int flag = 0;
-        pstmt = con->prepareStatement("SELECT * FROM user where user_id=? ;"); //유저 id의 중복 체크를 위한 select문
-        pstmt->setString(1, use_id);
-        result = pstmt->executeQuery();
 
-        while (result->next()) {
-            db_id = result->getString(1).c_str();
-            if (db_id == use_id) {
-                flag = 1; break;
-            }
+
+    int flag = 0;
+    pstmt = con->prepareStatement("SELECT * FROM user where user_id=? ;"); //유저 id의 중복 체크를 위한 select문
+    pstmt->setString(1, use_id);
+    result = pstmt->executeQuery();
+
+    while (result->next()) {
+        db_id = result->getString(1).c_str();
+        if (db_id == use_id) {
+            flag = 1; break;
         }
-        if (flag == 1) {
-            msg = "이미 사용중인 아이디 입니다. \n";
-        }
-         
-        if (!password_check(use_password)) {
-            msg += "이미 사용중인 패스워드입니다. \n";
-        }
-               
-        if (!email_check(use_email)) {
-            msg += "이메일 형식에 맞게 입력해주세요. \n";
-        }
+    }
+    if (flag == 1) {
+        msg = "이미 사용중인 아이디 입니다. \n";
+    }
+
+    if (!password_check(use_password)) {
+        msg += "이미 사용중인 패스워드입니다. \n";
+    }
+
+    if (!email_check(use_email)) {
+        msg += "이메일 형식에 맞게 입력해주세요. \n";
+    }
 
     if (msg.size() != 0) {
         send(sck_list[idx].sck, msg.c_str(), msg.size(), 0);
@@ -283,22 +367,32 @@ void join_membership(char* buf, int idx) {
 }
 
 
-void login_possible(string possible_id, int idx) { //로그인
+void login_possible(string message, int idx) { //로그인
     string check_id;
+    string possible_id, password, nxt = "";
+    std::stringstream stream(message);
+    int cnt = 0;
+    while (stream >> nxt) {
+        if (cnt == 0) possible_id = nxt;
+        if (cnt == 1) password = nxt;
+        cnt++;
+    }
 
     pstmt = con->prepareStatement("SELECT * FROM user where user_id=?");
     pstmt->setString(1, possible_id);
     pstmt->execute();
     result = pstmt->executeQuery(); //데이터베이스에서 id와 password를 가져옴
-    
+
     if (result->next()) {
         check_id = result->getString(1).c_str();
     }
     string msg = "";
-    
+
     if (check_id == possible_id) {
         if (duplicate_current_user(possible_id)) {
             msg = "로그인 되었습니다.";
+            sck_list[idx].user_id = possible_id;
+            sck_list[idx].user_pw = password;
             current_user(possible_id);
         }
         else {
@@ -306,7 +400,7 @@ void login_possible(string possible_id, int idx) { //로그인
         }
     }
     else {
-        msg =  "로그인에 실패했습니다.";
+        msg = "로그인에 실패했습니다.";
     }
     send(sck_list[idx].sck, msg.c_str(), msg.size(), 0);
 

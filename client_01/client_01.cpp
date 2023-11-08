@@ -238,7 +238,7 @@ void go_chat() {
             menu_list(client_addr, &id, &password);
             break;
         }
-       
+
         if (text == "/help") { //사용자 도움 명령어
             setFontColor(CC_YELLOW);
             cout << "/dm <닉네임> <메시지>  : 특정 유저에게만 메시지를 전송하고, 다른 유저에게는 표시되지 않습니다.\n";
@@ -283,10 +283,11 @@ void go_chatting(SOCKADDR_IN& client_addr, int port_num) { //채팅방 입장 함수
     }
     if (port_num == 6666) {     //게임방 입장
         run_game();
-    }else {
+    }
+    else {
         go_chat();
     }
-    
+
 }
 int chat_recv() {
     char buf[MAX_SIZE] = { };
@@ -298,8 +299,8 @@ int chat_recv() {
 
             msg = buf;
             std::stringstream ss(msg); //문자열을 스트림화
-            ss >> user; 
-            
+            ss >> user;
+
             if (msg.substr(0, 6) == "/color") {
                 std::stringstream s(msg);
                 string nick, color;
@@ -370,7 +371,7 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
     cout << "☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆\n";
 
     cin >> num;
-    
+
     string temp;
     getline(cin, temp);
     to_clean();
@@ -406,7 +407,7 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
         break;
 
     }
-} 
+}
 
 void delete_current_user(string delete_id) { //로그아웃 시 해당 유저를 테이블에서 삭제
     pstmt = con->prepareStatement("DELETE FROM connecting_user where user_id = ?");
@@ -418,66 +419,80 @@ void modify_user_info(string* modify_id, string* password) {
     string new_info;
     int what_modify = 0;
 
-    cout << "1.비밀번호  2.닉네임  3.이메일  4.뒤로가기  5.회원정보확인" << endl;
-    cout << "원하시는 항목을 선택해주세요. >> ";
-    cin >> what_modify;
+    while (true) {
 
-    switch (what_modify) {
-    case MODIFY_PASSWORD:
-        cout << "새로운 비밀번호를 입력해주세요. (!, ?, # 중 1개 이상 포함) >> ";
-        while (1) {
-            cin >> new_info;
-            if (password_check(new_info)) {
-                pstmt = con->prepareStatement("UPDATE user set password = ? where user_id = ?");
-                pstmt->setString(1, new_info);
-                pstmt->setString(2, *modify_id);
-                pstmt->execute();
-                *password = new_info;
-                cout << "성공적으로 정보가 수정되었습니다." << endl;
-                Sleep(1000);
-                break;
-            }
-            else {
-                cout << "비밀번호 형식에 맞춰서 입력해주세요. >> ";
+        while (true) {
+            cout << "1.비밀번호  2.닉네임  3.이메일  4.뒤로가기  5.회원정보확인" << endl;
+            cout << "원하시는 항목을 선택해주세요. >> ";
+            cin >> what_modify;
+            if (what_modify < 1 || what_modify > 5) {
+                cout << "옳바른 명령어가 아닙니다. 다시입력해주세요.\n";
                 continue;
             }
-        }break;
-    case MODIFY_NICKNAME:
-        cout << "새로운 닉네임을 입력해주세요. >> ";
-        cin >> new_info;
-        pstmt = con->prepareStatement("UPDATE user set nickname = ? where user_id = ?");
-        pstmt->setString(1, new_info);
-        pstmt->setString(2, *modify_id);
-        pstmt->execute();
-        cout << "성공적으로 정보가 수정되었습니다." << endl;
-        real_nickname = new_info;
-        Sleep(1000);
-        break;
-    case MODIFY_EMAIL:
-        cout << "새로운 이메일을 입력해주세요. >> ";
-        while (1) {
-            cin >> new_info;
-            if (email_check(new_info)) {
-                pstmt = con->prepareStatement("UPDATE user set email = ? where user_id = ?");
-                pstmt->setString(1, new_info);
-                pstmt->setString(2, *modify_id);
-                pstmt->execute();
-                cout << "성공적으로 정보가 수정되었습니다." << endl;
-                Sleep(2000);
-                break;
-            }
-            else {
-                cout << "이메일 형식에 맞춰서 입력해주세요. >> ";
-                continue;
-            }
+            break;
+
         }
-        break;
-    case MODIFY_BACK:
-        break;
-    case MEMBER_INFORMATION:
-        my_info(*modify_id, *password);
-        break;
+
+        if (what_modify == MODIFY_BACK) return;
+        char buf[MAX_SIZE] = {};
+
+        ZeroMemory(&buf, MAX_SIZE);
+        switch (what_modify) {
+        case MODIFY_PASSWORD:
+            cout << "새로운 비밀번호를 입력해주세요. (!, ?, # 중 1개 이상 포함) >> ";
+            cin >> new_info;
+            break;
+        case MODIFY_NICKNAME:
+            cout << "새로운 닉네임을 입력해주세요. >> ";
+            cin >> new_info;
+            break;
+        case MODIFY_EMAIL:
+            cout << "새로운 이메일을 입력해주세요. >> ";
+            cin >> new_info;
+            break;
+        }
+        // 클라이언트에서 해야할일 send 형식 "2 <1, 2, 3, 4, 5> <보낼 데이터> 
+        string msg = "2 " + std::to_string(what_modify) + " " + new_info;
+        send(client_sock, msg.c_str(), msg.size(), 0);
+
+        recv(client_sock, buf, MAX_SIZE, 0);
+
+        system("cls");
+
+        if (what_modify == MEMBER_INFORMATION) {
+            cout << buf << '\n';
+            continue;
+        }
+        else if (what_modify == MODIFY_PASSWORD) {
+            if (strcmp(buf, "false") == 0) {
+                cout << "패스워드 형식에 맞게 입력해주세요.\n";
+                continue;
+            }
+            cout << buf << '\n';
+            Sleep(3000);
+            system("cls");
+            continue;
+        }
+        else if (what_modify == MODIFY_EMAIL) {
+            if (strcmp(buf, "false") == 0) {
+                cout << "이메일 형식에 맞게 입력해주세요.\n";
+                continue;
+            }
+            cout << buf << '\n';
+            Sleep(3000);
+            system("cls");
+            continue;
+        }
+        else if (what_modify == MODIFY_NICKNAME) {
+            cout << "성공적으로 닉네임을 변경하였습니다.";
+            Sleep(3000);
+            system("cls");
+            continue;
+        }
     }
+
+
+
 }
 
 void my_info(string id, string pwd) {
@@ -557,19 +572,19 @@ void join_membership() {
         //구조체 데이터 입력
 
         string serializedData(reinterpret_cast<const char*>(&member), sizeof(member));  //데이터 직렬화
-        
-       
+
+
         send(client_sock, serializedData.c_str(), serializedData.size(), 0);
         recv(client_sock, buf, MAX_SIZE, 0);
         if (strcmp(buf, "true") == 0) break;
         cout << buf;
     }
 
-    
+
 }
 
 void first_screen() {
-    
+
     int client_choose = 0;
     while (1) {
         cout << "☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆\n";
@@ -607,8 +622,8 @@ void first_screen() {
             cin >> id;
             cout << "PW :";
             cin >> password;
-            msg = "0 " + id;
-            
+            msg = "0 " + id + " " + password;
+
             send(client_sock, msg.c_str(), msg.size(), 0); // 현재 진행 부분
             recv(client_sock, buf, MAX_SIZE, 0);
             cout << buf;
@@ -651,7 +666,7 @@ int main() {
 
     if (!code) {
         client_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);  //연결할 서버 정보 설정 부분
-        
+
         client_addr.sin_family = AF_INET;
         client_addr.sin_port = htons(5555);
         InetPton(AF_INET, TEXT("127.0.0.1"), &client_addr.sin_addr);
