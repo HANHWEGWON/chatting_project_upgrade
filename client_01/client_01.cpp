@@ -7,7 +7,6 @@
 #include <sstream>
 #include <iostream>
 #include <thread>
-#include <mysql/jdbc.h>
 #include <ctime>
 #include <windows.h>
 #include <cstdio> 
@@ -21,18 +20,7 @@ using std::cin;
 using std::endl;
 using std::string;
 
-sql::mysql::MySQL_Driver* driver;
-sql::Connection* con;
-sql::Statement* stmt;
-sql::PreparedStatement* pstmt;
-sql::ResultSet* result;
-
-const string server = "tcp://127.0.0.1:3306"; //데이터베이스 주소
-const string username = "root"; //데이터베이스 사용자
-const string db_password = "1234"; //데이터베이스 접속 비밀번호
-
 int all_color_num = 16;
-int delete_return = 0;
 SOCKET client_sock;
 string id, password, real_nickname, user;
 SOCKADDR_IN client_addr = {};
@@ -62,7 +50,7 @@ void go_chatting(SOCKADDR_IN&, int);          //소켓연결해서 채팅하는 기능
 void my_info(string, string);                 //내정보확인 기능
 void go_chat();                               //채팅방 입장후 채팅하는 기능
 void run_game();                              //게임방 입장후 게임하는 기능
-bool password_check(string);
+//bool password_check(string);
 
 
 namespace my_to_str { //컴파일러의 표준 버전이 안 맞아서 to_string 사용 시 문제발생
@@ -143,7 +131,6 @@ enum Main {
     MAIN_LOGIN,
     MAIN_MEMBERSHIP,
 };
-
 void setFontColor(int color) { //텍스트 색상 변경
     CONSOLE_SCREEN_BUFFER_INFO info;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
@@ -155,8 +142,6 @@ void setColor(int color, int bgcolor) { //텍스트 & 배경 색상 변경
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),
         (bgcolor << 4) | color);
 }
-
-//소켓 재설정 함수
 void init_socket() { //socket을 닫은 후, 새로운 socket 생성
     closesocket(client_sock);
     WSACleanup();
@@ -170,7 +155,6 @@ void init_socket() { //socket을 닫은 후, 새로운 socket 생성
         InetPton(AF_INET, TEXT("127.0.0.1"), &client_addr.sin_addr);
     }
 }
-
 void run_game() {
     char buf[MAX_SIZE] = { };
     string msg = "", text = "";
@@ -196,7 +180,6 @@ void run_game() {
         }
     }
 }
-
 int chat_recv() {
     char buf[MAX_SIZE] = { };
     string msg;
@@ -233,7 +216,6 @@ int chat_recv() {
         }
     }
 }
-
 void go_chat() {
     std::thread th_recv(chat_recv);
 
@@ -283,8 +265,8 @@ void go_chatting(SOCKADDR_IN& client_addr, int port_num) { //채팅방 입장 함수
 
     while (1) {
         if (!connect(client_sock, (SOCKADDR*)&client_addr, sizeof(client_addr))) {
-            if (port_num == 7777) cout << "Server Connect" << endl; //sin_port = 7777 -> 채팅 서버 입장
-            if (port_num == 6666) cout << "gameServer Connect" << endl; //sin_port = 6666 -> 게임 서버 입장
+            if (port_num == 7777) cout << "chatting_server_connect" << endl; //sin_port = 7777 -> 채팅 서버 입장
+            if (port_num == 6666) cout << "gameServer_connect" << endl; //sin_port = 6666 -> 게임 서버 입장
             send(client_sock, real_nickname.c_str(), real_nickname.length(), 0);
             break;
         }
@@ -314,7 +296,6 @@ void go_chatting(SOCKADDR_IN& client_addr, int port_num) { //채팅방 입장 함수
     menu_list(client_addr, &id, &password);
 
 }
-
 void output_chat(char buf[MAX_SIZE]) { //색상 변경 대상 유저의 챗 -> 중복 출력 방지
 
     for (int i = 0; i < c.num; i++) {
@@ -399,14 +380,12 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
 
     }
 }
-
 void delete_current_user() { //로그아웃 시 해당 유저를 테이블에서 삭제
     string msg = "4 ";
     char buf[MAX_SIZE] = {};
     send(client_sock, msg.c_str(), 1, 0);
     return;
 }
-
 void modify_user_info() {
     string new_info;
     int what_modify = 0;
@@ -626,23 +605,6 @@ int main() {
     //Winsock를 초기화하는 함수. MAKEWORD(2, 2)는 Winsock의 2.2 버전을 사용하겠다는 의미
     //실행에 성공하면 0을, 실패하면 그 이외의 값을 반환
     //0을 반환했다는 것은 Winsock을 사용할 준비가 되었다는 의미
-
-    try {
-        driver = sql::mysql::get_mysql_driver_instance();
-        con = driver->connect(server, username, db_password);
-    }
-    catch (sql::SQLException& e) {
-        cout << "Could not connect to server. Error message: " << e.what() << endl;
-        exit(1);
-    }
-
-    con->setSchema("chat");
-    stmt = con->createStatement();
-    stmt->execute("set names euckr");//한국어를 받기위한 설정문
-
-    if (stmt) { delete stmt; stmt = nullptr; }
-    stmt = con->createStatement();
-    delete stmt;
 
     if (!code) {
         client_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);  //연결할 서버 정보 설정 부분

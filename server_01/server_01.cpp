@@ -124,7 +124,7 @@ void server_init() { //서버 초기화
     bind(server_sock.sck, (sockaddr*)&server_addr, sizeof(server_addr)); // 설정된 소켓 정보를 소켓에 바인딩한다.
     listen(server_sock.sck, SOMAXCONN); // 소켓을 대기 상태로 기다린다.*
     server_sock.user = "server";
-    cout << "Server On" << endl;
+    cout << "chatting_server_on" << endl;
 }// 서버 초기화
 void add_client() {
     while (true) {
