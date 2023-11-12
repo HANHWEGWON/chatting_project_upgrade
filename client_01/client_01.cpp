@@ -51,18 +51,20 @@ time_t timer;
 struct tm* t;
 
 int chat_recv();                              //서버로부터 데이터를 받는 기능
-void modify_user_info(string*, string*);      //회원정보수정 기능
-void user_delete(string*, string*);           //회원탈퇴 기능
+void modify_user_info();                        //회원정보수정 기능
+bool user_delete();                             //회원탈퇴 기능
 void menu_list(SOCKADDR_IN&, string*, string*);//메뉴리스트를 보여주는 기능
 void first_screen();                          //시작화면
 void init_socket();                               //소켓 초기화후 다시 생성하는 기능
-void delete_current_user(string);
+void delete_current_user();
 void output_chat(char buf[MAX_SIZE]);         //색상 변경 대상 유저의 챗 -> 중복 출력 방지
 void go_chatting(SOCKADDR_IN&, int);          //소켓연결해서 채팅하는 기능
 void my_info(string, string);                 //내정보확인 기능
 void go_chat();                               //채팅방 입장후 채팅하는 기능
 void run_game();                              //게임방 입장후 게임하는 기능
 bool password_check(string);
+
+
 namespace my_to_str { //컴파일러의 표준 버전이 안 맞아서 to_string 사용 시 문제발생
     template < typename T > std::string to_string(const T& n)
     {
@@ -142,9 +144,6 @@ enum Main {
     MAIN_MEMBERSHIP,
 };
 
-void to_clean() {
-    system("cls");
-}
 void setFontColor(int color) { //텍스트 색상 변경
     CONSOLE_SCREEN_BUFFER_INFO info;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
@@ -157,33 +156,7 @@ void setColor(int color, int bgcolor) { //텍스트 & 배경 색상 변경
         (bgcolor << 4) | color);
 }
 
-bool email_check(string email) { //이메일 규칙 검사
-    if (email.find("@") == string::npos) {
-        return false;
-    }
-    else if (email.find(".com") == string::npos) {
-        return false;
-    }
-    else if (email.find(".com") < email.find("@")) {
-        return false;
-    }
-    else if (email.find("@") == 0) {
-        return false;
-    }
-    else
-        return true;
-}
-bool password_check(string a) {
-    char special_char[3] = { '!', '?', '#' }; //!, ?, # 중 하나를 반드시 포함하여 비밀번호 구성
-    for (char c : special_char) {
-        if (a.find(c) != string::npos) {
-            return true;
-        }
-    }
-    return false;
-}
-
-
+//소켓 재설정 함수
 void init_socket() { //socket을 닫은 후, 새로운 socket 생성
     closesocket(client_sock);
     WSACleanup();
@@ -197,6 +170,7 @@ void init_socket() { //socket을 닫은 후, 새로운 socket 생성
         InetPton(AF_INET, TEXT("127.0.0.1"), &client_addr.sin_addr);
     }
 }
+
 void run_game() {
     char buf[MAX_SIZE] = { };
     string msg = "", text = "";
@@ -215,14 +189,51 @@ void run_game() {
                 text = "end_game";
                 send(client_sock, text.c_str(), text.size(), 0);
                 Sleep(2000);
-                to_clean();
+                system("cls");
                 closesocket(client_sock);
-                init_socket();
-                menu_list(client_addr, &id, &password); //게임 종료 -> 메뉴로 이동
+                break;
             }
         }
     }
 }
+
+int chat_recv() {
+    char buf[MAX_SIZE] = { };
+    string msg;
+
+    while (1) {
+        ZeroMemory(&buf, MAX_SIZE);
+        if (recv(client_sock, buf, MAX_SIZE, 0) > 0) {
+
+            msg = buf;
+            std::stringstream ss(msg); //문자열을 스트림화
+            ss >> user;
+
+            if (msg.substr(0, 6) == "/color") {
+                std::stringstream s(msg);
+                string nick, color;
+                while (s >> nick >> color) {
+                    if (nick != "/color") {
+                        break;
+                    }
+                }
+                c.color[c.num] = stoi(color); //원하는 색상과 특정 유저의 닉네임을 구조체에 저장
+                c.user_nickname[c.num] = nick;
+                c.num++;
+                continue;
+            }
+
+            std::thread th_color(output_chat, buf);
+
+            th_color.join();
+        }
+        else {
+            cout << "Server Off" << endl;
+            return -1;
+        }
+    }
+}
+
 void go_chat() {
     std::thread th_recv(chat_recv);
 
@@ -234,8 +245,6 @@ void go_chat() {
         if (text == "") { continue; } //enter -> db 저장 x
         if (text == "/back") { //뒤로가기 기능
             send(client_sock, buffer, strlen(buffer), 0);
-            init_socket();
-            menu_list(client_addr, &id, &password);
             break;
         }
 
@@ -288,43 +297,24 @@ void go_chatting(SOCKADDR_IN& client_addr, int port_num) { //채팅방 입장 함수
         go_chat();
     }
 
-}
-int chat_recv() {
-    char buf[MAX_SIZE] = { };
-    string msg;
+    init_socket();
+    client_addr.sin_port = htons(5555);
 
     while (1) {
-        ZeroMemory(&buf, MAX_SIZE);
-        if (recv(client_sock, buf, MAX_SIZE, 0) > 0) {
-
-            msg = buf;
-            std::stringstream ss(msg); //문자열을 스트림화
-            ss >> user;
-
-            if (msg.substr(0, 6) == "/color") {
-                std::stringstream s(msg);
-                string nick, color;
-                while (s >> nick >> color) {
-                    if (nick != "/color") {
-                        break;
-                    }
-                }
-                c.color[c.num] = stoi(color); //원하는 색상과 특정 유저의 닉네임을 구조체에 저장
-                c.user_nickname[c.num] = nick;
-                c.num++;
-                continue;
-            }
-
-            std::thread th_color(output_chat, buf);
-
-            th_color.join();
+        if (!connect(client_sock, (SOCKADDR*)&client_addr, sizeof(client_addr))) {
+            cout << "login_server_on\n";
+            break;
         }
-        else {
-            cout << "Server Off" << endl;
-            return -1;
-        }
+        cout << "Connecting..." << endl;
     }
+
+    string msg = "0 " + id + " " + password;
+    send(client_sock, msg.c_str(), msg.size(), 0);
+
+    menu_list(client_addr, &id, &password);
+
 }
+
 void output_chat(char buf[MAX_SIZE]) { //색상 변경 대상 유저의 챗 -> 중복 출력 방지
 
     for (int i = 0; i < c.num; i++) {
@@ -346,7 +336,7 @@ void output_chat(char buf[MAX_SIZE]) { //색상 변경 대상 유저의 챗 -> 중복 출력 �
 void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password) {      //현재 작업 중!
     int num = 0;
 
-    to_clean();
+    system("cls");
     cout << "☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆\n";
     cout << "★                                                  ★\n";
     cout << "☆                                                  ☆\n";
@@ -374,10 +364,10 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
 
     string temp;
     getline(cin, temp);
-    to_clean();
+    system("cls");
     switch (num) {
     case MENU_MODIFY:
-        modify_user_info(menu_id, menu_password);
+        modify_user_info();
         menu_list(client_addr, menu_id, menu_password); //회원정보 수정이 완료된 후 다시 메뉴로 이동
         break;
     case MENU_CHAT:
@@ -385,37 +375,39 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
         cout << "\n\n\n\n\n\n\n\t\t/help 명령어는 사용자에게 명령어 목록을 제공합니다. ♥";
         setColor(CC_LIGHTGRAY, CC_BLACK); //기존 색상
         Sleep(3000);
-        to_clean();
+        system("cls");
+        init_socket();
         go_chatting(client_addr, 7777); //채팅 서버 입장
         break;
     case MENU_DELETE:
-        user_delete(menu_id, menu_password);
-        if (delete_return) {
-            break;
-        }
-        else {
+        if (user_delete() == false) {
+            Sleep(2000);
             menu_list(client_addr, menu_id, menu_password);
+        }else {
+            first_screen();
             break;
         }
     case MENU_MAIN:
-        delete_current_user(*menu_id); //로그아웃 시 현재 접속중인 유저 테이블에서 삭제
+        delete_current_user(); //로그아웃 시 현재 접속중인 유저 테이블에서 삭제
         first_screen();
         break;
     case MENU_GAME:
-        to_clean();
+        system("cls");
+        init_socket();
         go_chatting(client_addr, 6666); //게임 서버 입장
         break;
 
     }
 }
 
-void delete_current_user(string delete_id) { //로그아웃 시 해당 유저를 테이블에서 삭제
-    pstmt = con->prepareStatement("DELETE FROM connecting_user where user_id = ?");
-    pstmt->setString(1, delete_id);
-    pstmt->execute();
+void delete_current_user() { //로그아웃 시 해당 유저를 테이블에서 삭제
+    string msg = "4 ";
+    char buf[MAX_SIZE] = {};
+    send(client_sock, msg.c_str(), 1, 0);
+    return;
 }
 
-void modify_user_info(string* modify_id, string* password) {
+void modify_user_info() {
     string new_info;
     int what_modify = 0;
 
@@ -494,62 +486,42 @@ void modify_user_info(string* modify_id, string* password) {
 
 
 }
+bool user_delete() {
 
-void my_info(string id, string pwd) {
-    pstmt = con->prepareStatement("SELECT * FROM user where user_id = ? and password = ?");
-    pstmt->setString(1, id);
-    pstmt->setString(2, pwd);
-    pstmt->execute();
-    result = pstmt->executeQuery();
-
-    cout << "내정보-------------------------\n";
-    while (result->next()) {
-        cout << "ID:" << result->getString(1) << "\nPW:" << result->getString(2) << "\n닉네임:" << result->getString(3) << "\nemail:" << result->getString(4) << "\n------------------------------";
-    }
-    Sleep(5000);
-    to_clean();
-}
-
-void user_delete(string* id, string* password) {
-    int yes_or_no = 0;
-    string delete_password;
+    int order;
+    string password="", msg = "";
 
     cout << "회원탈퇴를 할 경우 모든 대화 내용이 사라집니다." << endl
         << "계속 진행하시겠습니까? (1. 예  2. 아니오) >> ";
-    cin >> yes_or_no;
+    cin >> order;
 
-    switch (yes_or_no) {
-    case YES_DELETE:
-        cout << "안전한 회원탈퇴를 위해, 비밀번호를 입력해주세요. >> ";
-        cin >> delete_password;
-        if (delete_password == *password) {
-            pstmt = con->prepareStatement("DELETE FROM user where password = ?");
-            pstmt->setString(1, *password);
-            pstmt->execute();
-            cout << "성공적으로 회원탈퇴가 되었습니다." << endl;
-            delete_current_user(*id);
-            delete_return = 1;
-            Sleep(2000);
-            to_clean();
+    char buf[MAX_SIZE] = {};
+    
+    ZeroMemory(&buf, MAX_SIZE);
+        switch (order) {
+        case YES_DELETE:
+            cout << "안전한 회원탈퇴를 위해, 비밀번호를 입력해주세요. >> ";
+            cin >> password;
+        case NO_DELETE:
             break;
         }
-        else {
-            cout << "올바르지 않은 비밀번호를 입력하셨습니다." << endl;
-            delete_return = 0;
-            Sleep(2000);
-            break;
+        msg = "3 " + password;
+
+        send(client_sock, msg.c_str(), msg.size(), 0);
+        recv(client_sock, buf, MAX_SIZE, 0);
+        cout << buf << '\n';
+        if (strcmp(buf, "올바르지 않은 비밀번호를 입력하셨습니다.\n") == 0) {
+            return false;
         }
-    case NO_DELETE:
-        delete_return = 0;
-        break;
-    }
+        else return true;
+    
+
 }
-
 void join_membership() {
     struct membership member;
     string membership_id, membership_password, nickname, email;
     string correct_id, correct_password;
-    to_clean();
+    system("cls");
     char buf[MAX_SIZE] = {};
 
     while (true) {
@@ -576,13 +548,18 @@ void join_membership() {
 
         send(client_sock, serializedData.c_str(), serializedData.size(), 0);
         recv(client_sock, buf, MAX_SIZE, 0);
-        if (strcmp(buf, "true") == 0) break;
+        if (strcmp(buf, "true") == 0) {
+            id = membership_id;
+            password = membership_password;
+            real_nickname = nickname;
+
+            break;
+        }
         cout << buf;
     }
 
 
 }
-
 void first_screen() {
 
     int client_choose = 0;
@@ -624,11 +601,14 @@ void first_screen() {
             cin >> password;
             msg = "0 " + id + " " + password;
 
-            send(client_sock, msg.c_str(), msg.size(), 0); // 현재 진행 부분
+            send(client_sock, msg.c_str(), msg.size(), 0);
             recv(client_sock, buf, MAX_SIZE, 0);
-            cout << buf;
-            if (string(buf) != "로그인 되었습니다.") continue;
+            cout << buf << "\n";
+            int index = string(buf).find("로그인 되었습니다.");
+            if (index == string::npos) continue;
+            real_nickname = string(buf).substr(0, index - 1);
 
+            
             menu_list(client_addr, &id, &password); //로그인 성공 시 메뉴로
             continue; //회원탈퇴 후 main으로 오도록
         }

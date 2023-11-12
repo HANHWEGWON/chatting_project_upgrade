@@ -49,11 +49,8 @@ enum {
     login_possible_0,
     join_membership_1,
     modify_user_info_2,
-    my_info_3,
-    user_delete_4,
-    current_user_5,
-    delete_current_user_6,
-    duplicate_current_user_7
+    user_delete_3,
+    delete_current_user_4,
 };
 
 enum Modify_user_info {
@@ -79,7 +76,7 @@ string my_info(string, string);
 bool password_check(string a);
 bool email_check(string email);
 void delete_current_user(string);
-
+void user_delete(string, int);
 
 int main() {
     WSADATA wsa;
@@ -198,12 +195,18 @@ void get_order(char* buf, int idx) {       //클라이언트의 명령어와 소켓리스트의 
     case login_possible_0:
         login_possible(msg.substr(2), idx);
         break;
-
     case join_membership_1:
         join_membership(buf, idx);
         break;
     case modify_user_info_2:
         modify_user_info(msg.substr(2), idx);
+        break;
+    case user_delete_3:
+        user_delete(msg.substr(2), idx);
+        break;
+    case delete_current_user_4:
+        delete_current_user(sck_list[idx].user_id);
+        break;
 
     }
 
@@ -260,7 +263,6 @@ string my_info(string id, string pwd) {
     pstmt = con->prepareStatement("SELECT * FROM user where user_id = ? and password = ?");
     pstmt->setString(1, id);
     pstmt->setString(2, pwd);
-    pstmt->execute();
     result = pstmt->executeQuery();
     string msg = "";
 
@@ -368,7 +370,7 @@ void join_membership(char* buf, int idx) {
 
 
 void login_possible(string message, int idx) { //로그인
-    string check_id;
+    string check_id, nickname;
     string possible_id, password, nxt = "";
     std::stringstream stream(message);
     int cnt = 0;
@@ -385,12 +387,13 @@ void login_possible(string message, int idx) { //로그인
 
     if (result->next()) {
         check_id = result->getString(1).c_str();
+        nickname = result->getString(3).c_str();
     }
     string msg = "";
 
     if (check_id == possible_id) {
         if (duplicate_current_user(possible_id)) {
-            msg = "로그인 되었습니다.";
+            msg = nickname + " 로그인 되었습니다.";
             sck_list[idx].user_id = possible_id;
             sck_list[idx].user_pw = password;
             current_user(possible_id);
@@ -402,6 +405,26 @@ void login_possible(string message, int idx) { //로그인
     else {
         msg = "로그인에 실패했습니다.";
     }
+    send(sck_list[idx].sck, msg.c_str(), msg.size(), 0);
+
+}
+
+void user_delete(string msg, int idx) {
+
+    string check_password = msg;
+    string password = sck_list[idx].user_pw;
+    string id = sck_list[idx].user_id;
+
+    if (check_password == password) {
+        pstmt = con->prepareStatement("DELETE FROM user where password = ?");
+        pstmt->setString(1, password);
+        pstmt->execute();
+        msg = "성공적으로 회원탈퇴가 되었습니다.\n";
+        delete_current_user(id);
+    }else {
+        msg = "올바르지 않은 비밀번호를 입력하셨습니다.\n";
+    }
+
     send(sck_list[idx].sck, msg.c_str(), msg.size(), 0);
 
 }

@@ -94,16 +94,6 @@ int main() {
         }
         //std::thread th1(add_client); // 이렇게 하면 하나의 client만 받아짐...
 
-        while (1) { // 무한 반복문을 사용하여 서버가 계속해서 채팅 보낼 수 있는 상태를 만들어 줌. 반복문을 사용하지 않으면 한 번만 보낼 수 있음.
-            string text, msg = "";
-
-            std::getline(cin, text);
-
-            const char* buf = text.c_str();
-            msg = server_sock.user + " : " + buf;
-            send_msg(msg.c_str());
-        }
-
         for (int i = 0; i < MAX_CLIENT; i++) {
             th1[i].join();
             //join : 해당하는 thread 들이 실행을 종료하면 리턴하는 함수.
