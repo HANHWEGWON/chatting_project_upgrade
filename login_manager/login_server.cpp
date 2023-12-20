@@ -113,6 +113,8 @@ int main() {
             //join 함수가 없으면 main 함수가 먼저 종료되어서 thread가 소멸하게 됨.
             //thread 작업이 끝날 때까지 main 함수가 끝나지 않도록 해줌.
         }
+
+
         closesocket(server_sock.sck);
     }
     else {
@@ -170,6 +172,10 @@ void recv_msg(int idx) {
         int cnt = 0;
         ZeroMemory(&buf, MAX_SIZE);
         if (recv(sck_list[idx].sck, buf, MAX_SIZE, 0) > 0) { // 오류가 발생하지 않으면 recv는 수신된 바이트 수를 반환. 0보다 크다는 것은 메시지가 왔다는 것.
+            if (strcmp(buf, "!!socketChangeEvent!!") == 0) {
+                del_client(idx);
+                return;
+            }
             get_order(buf, idx);
 
         }
@@ -421,7 +427,8 @@ void user_delete(string msg, int idx) {
         pstmt->execute();
         msg = "성공적으로 회원탈퇴가 되었습니다.\n";
         delete_current_user(id);
-    }else {
+    }
+    else {
         msg = "올바르지 않은 비밀번호를 입력하셨습니다.\n";
     }
 

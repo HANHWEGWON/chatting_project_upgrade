@@ -282,13 +282,13 @@ void go_chatting(SOCKADDR_IN& client_addr, int port_num) { //채팅방 입장 함수
     init_socket();
     client_addr.sin_port = htons(5555);
 
-    while (1) {
+   while (1) {
         if (!connect(client_sock, (SOCKADDR*)&client_addr, sizeof(client_addr))) {
             cout << "login_server_on\n";
             break;
         }
         cout << "Connecting..." << endl;
-    }
+   }
 
     string msg = "0 " + id + " " + password;
     send(client_sock, msg.c_str(), msg.size(), 0);
@@ -342,7 +342,7 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
     cout << "☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆★☆\n";
 
     cin >> num;
-
+    string msg = "!!socketChangeEvent!!";
     string temp;
     getline(cin, temp);
     system("cls");
@@ -357,6 +357,7 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
         setColor(CC_LIGHTGRAY, CC_BLACK); //기존 색상
         Sleep(3000);
         system("cls");
+        send(client_sock, msg.c_str(), msg.size(), 0);
         init_socket();
         go_chatting(client_addr, 7777); //채팅 서버 입장
         break;
@@ -364,7 +365,8 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
         if (user_delete() == false) {
             Sleep(2000);
             menu_list(client_addr, menu_id, menu_password);
-        }else {
+        }
+        else {
             first_screen();
             break;
         }
@@ -374,6 +376,7 @@ void menu_list(SOCKADDR_IN& client_addr, string* menu_id, string* menu_password)
         break;
     case MENU_GAME:
         system("cls");
+        send(client_sock, msg.c_str(), msg.size(), 0);
         init_socket();
         go_chatting(client_addr, 6666); //게임 서버 입장
         break;
@@ -468,32 +471,32 @@ void modify_user_info() {
 bool user_delete() {
 
     int order;
-    string password="", msg = "";
+    string password = "", msg = "";
 
     cout << "회원탈퇴를 할 경우 모든 대화 내용이 사라집니다." << endl
         << "계속 진행하시겠습니까? (1. 예  2. 아니오) >> ";
     cin >> order;
 
     char buf[MAX_SIZE] = {};
-    
-    ZeroMemory(&buf, MAX_SIZE);
-        switch (order) {
-        case YES_DELETE:
-            cout << "안전한 회원탈퇴를 위해, 비밀번호를 입력해주세요. >> ";
-            cin >> password;
-        case NO_DELETE:
-            break;
-        }
-        msg = "3 " + password;
 
-        send(client_sock, msg.c_str(), msg.size(), 0);
-        recv(client_sock, buf, MAX_SIZE, 0);
-        cout << buf << '\n';
-        if (strcmp(buf, "올바르지 않은 비밀번호를 입력하셨습니다.\n") == 0) {
-            return false;
-        }
-        else return true;
-    
+    ZeroMemory(&buf, MAX_SIZE);
+    switch (order) {
+    case YES_DELETE:
+        cout << "안전한 회원탈퇴를 위해, 비밀번호를 입력해주세요. >> ";
+        cin >> password;
+    case NO_DELETE:
+        break;
+    }
+    msg = "3 " + password;
+
+    send(client_sock, msg.c_str(), msg.size(), 0);
+    recv(client_sock, buf, MAX_SIZE, 0);
+    cout << buf << '\n';
+    if (strcmp(buf, "올바르지 않은 비밀번호를 입력하셨습니다.\n") == 0) {
+        return false;
+    }
+    else return true;
+
 
 }
 void join_membership() {
@@ -587,7 +590,7 @@ void first_screen() {
             if (index == string::npos) continue;
             real_nickname = string(buf).substr(0, index - 1);
 
-            
+
             menu_list(client_addr, &id, &password); //로그인 성공 시 메뉴로
             continue; //회원탈퇴 후 main으로 오도록
         }

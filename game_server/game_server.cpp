@@ -12,7 +12,7 @@
 #include<algorithm>
 
 #define MAX_SIZE 1024
-#define MAX_CLIENT 2
+#define MAX_CLIENT 100
 
 using std::cout;
 using std::cin;

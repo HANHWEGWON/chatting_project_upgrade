@@ -1,8 +1,17 @@
-﻿     C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\x64\Release\server_01.lib 라이브러리 및 C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\x64\Release\server_01.exp 개체를 생성하고 있습니다.
+﻿  server_01.cpp
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(107,41): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(165,55): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(175,36): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(180,39): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(183,36): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(204,39): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(215,13): warning C4267: '초기화 중': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(261,14): warning C4834: 'nodiscard' 특성이 포함된 함수의 반환 값을 버리는 중
+C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\server_01\server_01.cpp(306,70): warning C4267: '인수': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+     C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\x64\Release\server_01.lib 라이브러리 및 C:\Users\Lenovo\Desktop\codingon_sf3\chatting_project_upgrade\x64\Release\server_01.exp 개체를 생성하고 있습니다.
   코드를 생성하고 있습니다.
-  0 of 462 functions ( 0.0%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
+  Previous IPDB and IOBJ mismatch, fall back to full compilation.
+  All 462 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
   코드를 생성했습니다.
 mysqlcppconn-static.lib(mysql_driver.obj) : warning LNK4099: '' PDB를 'mysqlcppconn-static.lib(mysql_driver.obj)' 또는 ''에서 찾을 수 없습니다. 디버그 정보가 없는 것처럼 개체를 링크합니다.
 mysqlcppconn-static.lib(mysql_connection.obj) : warning LNK4099: '' PDB를 'mysqlcppconn-static.lib(mysql_connection.obj)' 또는 ''에서 찾을 수 없습니다. 디버그 정보가 없는 것처럼 개체를 링크합니다.
